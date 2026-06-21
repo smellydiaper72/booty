@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { sql, initDb } from "@/lib/db";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const db = getDb();
+  await initDb();
 
-  const analysis = db
-    .prepare("SELECT * FROM analyses WHERE id = ?")
-    .get(id) as Record<string, unknown> | undefined;
+  const { rows: analyses } = await sql`SELECT * FROM analyses WHERE id = ${id}`;
+  const analysis = analyses[0] as Record<string, unknown> | undefined;
 
   if (!analysis) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const findings = db
-    .prepare("SELECT * FROM findings WHERE analysis_id = ? ORDER BY savings DESC")
-    .all(id);
+  const { rows: findings } = await sql`
+    SELECT * FROM findings WHERE analysis_id = ${id} ORDER BY savings DESC
+  `;
 
   const disputeLetter = generateLetterFromDb(analysis, findings as Finding[]);
 
@@ -50,7 +49,7 @@ function generateLetterFromDb(
   const itemizedComplaints = findings
     .map(
       (f, i) =>
-        `${i + 1}. ${f.line_item}\n   Billed: $${f.charge_amount.toLocaleString()} | Expected: $${f.expected_amount.toLocaleString()} | Disputed: $${f.savings.toLocaleString()}\n   ${f.action_required}`
+        `${i + 1}. ${f.line_item}\n   Billed: $${Number(f.charge_amount).toLocaleString()} | Expected: $${Number(f.expected_amount).toLocaleString()} | Disputed: $${Number(f.savings).toLocaleString()}\n   ${f.action_required}`
     )
     .join("\n\n");
 
