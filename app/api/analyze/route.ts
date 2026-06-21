@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import getDb from "@/lib/db";
 import { analyzeBill } from "@/lib/analyzer";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -11,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid bill total" }, { status: 400 });
     }
 
-    const result = analyzeBill({
+    const result = await analyzeBill({
       billText: billText ?? "",
       billType: billType ?? "hospital",
       providerName: providerName ?? "",
