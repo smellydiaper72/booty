@@ -367,7 +367,7 @@ function Pricing() {
         "Email support",
       ],
       cta: "Start 7-day free trial",
-      href: "/analyze?plan=pro",
+      href: "/api/checkout",
       highlight: true,
     },
     {
