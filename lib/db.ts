@@ -1,4 +1,38 @@
-import { sql } from "@vercel/postgres";
+import { createPool, type VercelPool } from "@vercel/postgres";
+
+type Primitive = string | number | boolean | undefined | null;
+
+// Neon / Vercel / Supabase integrations name the connection string
+// differently depending on which database you picked. Accept any of them.
+function resolveConnectionString(): string | undefined {
+  return (
+    process.env.POSTGRES_URL ||
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.POSTGRES_URL_NO_SSL
+  );
+}
+
+let pool: VercelPool | undefined;
+
+function getPool(): VercelPool {
+  if (!pool) {
+    const connectionString = resolveConnectionString();
+    if (!connectionString) {
+      throw new Error(
+        "No database connection string found. Expected one of POSTGRES_URL or DATABASE_URL in the environment."
+      );
+    }
+    pool = createPool({ connectionString });
+  }
+  return pool;
+}
+
+// `sql` tagged-template proxy so callers can keep writing sql`...`
+export const sql = ((strings: TemplateStringsArray, ...values: Primitive[]) =>
+  getPool().sql(strings, ...values)) as VercelPool["sql"];
 
 let initialized = false;
 
@@ -47,5 +81,3 @@ export async function initDb() {
   `;
   initialized = true;
 }
-
-export { sql };
